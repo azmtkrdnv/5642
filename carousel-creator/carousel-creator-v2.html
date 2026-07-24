@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B0D10">
+<title>Carousel Creator — Azamat</title>
+<meta name="description" content="Write a LinkedIn carousel with text, quote and image slides. Pick your colours, download it as a PDF ready to post.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0D10; --surface:#12161A; --line:#1F262C; --line-bright:#2E3941;
+  --text:#E8E5DE; --muted:#79848D; --dim:#4C555C; --signal:#E0A548;
+  --ok:#7FB069; --danger:#E07A5F;
+  --pad:clamp(16px,3.5vw,40px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+
+.topbar{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:14px var(--pad);border-bottom:1px solid var(--line);
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+}
+.topbar a:hover{color:var(--text)}
+.topbar .home{color:var(--text)}
+
+.app{display:grid;grid-template-columns:1fr}
+@media(min-width:920px){
+  .app{grid-template-columns:360px 1fr;height:calc(100vh - 47px)}
+}
+
+/* ---------- editor rail ---------- */
+.rail{
+  padding:var(--pad);border-bottom:1px solid var(--line);
+  display:flex;flex-direction:column;gap:30px;
+}
+@media(min-width:920px){
+  .rail{border-bottom:none;border-right:1px solid var(--line);overflow-y:auto}
+}
+.grp{display:flex;flex-direction:column;gap:12px}
+.lbl{
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+  padding-bottom:10px;border-bottom:1px solid var(--line-bright);
+}
+.lbl .idx{color:var(--dim);letter-spacing:.1em}
+.field{display:flex;flex-direction:column;gap:6px}
+.field > span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.hide{display:none !important}
+
+input[type=text],textarea{
+  background:var(--surface);border:1px solid var(--line-bright);color:var(--text);
+  font:inherit;font-size:13px;padding:10px 12px;border-radius:2px;width:100%;resize:vertical;
+}
+textarea{min-height:100px;line-height:1.6}
+input[type=text]:focus,textarea:focus{outline:none;border-color:var(--signal)}
+input::placeholder,textarea::placeholder{color:var(--dim)}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;border:1px solid var(--line-bright);border-radius:2px;overflow:hidden}
+.seg button{
+  flex:1;background:none;border:none;color:var(--muted);font:inherit;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;padding:9px 4px;cursor:pointer;transition:.15s;
+}
+.seg button + button{border-left:1px solid var(--line-bright)}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:rgba(224,165,72,.12);color:var(--signal)}
+
+.swatch{display:flex;align-items:center;gap:8px}
+.swatch input[type=color]{
+  width:38px;height:38px;padding:0;border:1px solid var(--line-bright);
+  border-radius:2px;background:none;cursor:pointer;flex:none;
+}
+.swatch input[type=text]{font-size:12px;letter-spacing:.04em}
+
+.contrast{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  font-size:11px;letter-spacing:.06em;padding:9px 12px;
+  background:var(--surface);border-left:2px solid var(--dim);
+}
+.contrast.good{border-left-color:var(--ok)}
+.contrast.bad{border-left-color:var(--signal)}
+.contrast b{font-weight:500;color:var(--text)}
+.contrast .verdict{color:var(--muted);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+.contrast.good .verdict{color:var(--ok)}
+.contrast.bad .verdict{color:var(--signal)}
+
+.presets{display:flex;gap:7px;flex-wrap:wrap}
+.presets button{
+  width:34px;height:34px;border:1px solid var(--line-bright);border-radius:2px;
+  cursor:pointer;font:inherit;font-size:13px;font-weight:600;
+  display:grid;place-items:center;transition:border-color .15s,transform .15s;
+}
+.presets button:hover{border-color:var(--signal);transform:translateY(-1px)}
+
+.acts{display:flex;gap:7px;flex-wrap:wrap}
+.ghost{
+  background:none;border:1px solid var(--line-bright);color:var(--muted);
+  font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  padding:9px 13px;border-radius:2px;cursor:pointer;transition:.15s;
+}
+.ghost:hover:not(:disabled){color:var(--text);border-color:var(--signal)}
+.ghost:disabled{opacity:.35;cursor:not-allowed}
+.ghost.danger:hover:not(:disabled){color:var(--danger);border-color:var(--danger)}
+
+.drop{
+  border:1px dashed var(--line-bright);border-radius:2px;padding:22px 14px;
+  text-align:center;cursor:pointer;transition:.15s;
+  font-size:11px;letter-spacing:.08em;color:var(--dim);
+}
+.drop:hover,.drop.over{border-color:var(--signal);color:var(--signal)}
+.drop b{display:block;font-weight:400;color:var(--muted);margin-bottom:5px;letter-spacing:.14em;text-transform:uppercase;font-size:10px}
+.note{font-size:11px;line-height:1.6;color:var(--dim);border-left:2px solid var(--line-bright);padding-left:11px}
+
+/* ---------- stage ---------- */
+.stage{display:flex;flex-direction:column;padding:var(--pad);gap:18px;min-width:0}
+@media(min-width:920px){.stage{overflow:hidden}}
+.viewport{
+  flex:1;display:grid;place-items:center;min-height:280px;min-width:0;
+  background:repeating-conic-gradient(var(--surface) 0 25%, transparent 0 50%) 0 0/22px 22px;
+  border:1px solid var(--line);
+}
+#preview{max-width:100%;max-height:min(56vh,600px);display:block;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;flex:none}
+.thumb{
+  position:relative;flex:none;border:1px solid var(--line-bright);background:none;
+  padding:0;cursor:pointer;border-radius:2px;overflow:hidden;transition:border-color .15s;line-height:0;
+}
+.thumb:hover{border-color:var(--muted)}
+.thumb.on{border-color:var(--signal)}
+.thumb .n{
+  position:absolute;left:0;bottom:0;font-size:9px;letter-spacing:.1em;
+  padding:2px 5px;background:rgba(11,13,16,.82);color:var(--muted);line-height:1.4;
+}
+.thumb.on .n{color:var(--signal)}
+.addslide{
+  flex:none;width:62px;border:1px dashed var(--line-bright);background:none;
+  color:var(--dim);font:inherit;font-size:20px;cursor:pointer;border-radius:2px;transition:.15s;
+}
+.addslide:hover{border-color:var(--signal);color:var(--signal)}
+
+.exportbar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:none;
+  padding-top:15px;border-top:1px solid var(--line);
+}
+.primary{
+  background:var(--signal);border:1px solid var(--signal);color:#12161A;
+  font:inherit;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  padding:13px 26px;border-radius:2px;cursor:pointer;transition:.15s;
+}
+.primary:hover:not(:disabled){background:#EFB45B;border-color:#EFB45B}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.meta{font-size:11px;color:var(--dim);letter-spacing:.06em}
+.meta b{color:var(--muted);font-weight:400}
+
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="home" href="https://apps.azamat.org/">azamat.org / apps</a>
+  <a href="https://apps.azamat.org/">← all apps</a>
+</header>
+
+<div class="app">
+
+  <!-- ============ EDITOR ============ -->
+  <aside class="rail">
+
+    <div class="grp">
+      <div class="lbl"><span>Slide</span><span class="idx" id="slideIdx">01 / 01</span></div>
+
+      <div class="field"><span>Type</span>
+        <div class="seg" id="segType">
+          <button data-v="text" class="on">Text</button>
+          <button data-v="quote">Quote</button>
+          <button data-v="image">Image</button>
+        </div>
+      </div>
+
+      <!-- text -->
+      <div id="paneText">
+        <label class="field" style="margin-bottom:12px"><span>Title</span>
+          <input type="text" id="fTitle" placeholder="The hook that stops the scroll" autocomplete="off">
+        </label>
+        <label class="field"><span>Body</span>
+          <textarea id="fBody" placeholder="One idea per slide. Short lines read better on a phone."></textarea>
+        </label>
+      </div>
+
+      <!-- quote -->
+      <div id="paneQuote" class="hide">
+        <label class="field" style="margin-bottom:12px"><span>Quote</span>
+          <textarea id="fQuote" placeholder="Paste the quote here"></textarea>
+        </label>
+        <label class="field" style="margin-bottom:12px"><span>Who said it</span>
+          <input type="text" id="fSource" placeholder="Name, and where it's from" autocomplete="off">
+        </label>
+        <p class="note">Check the attribution before you post. Most quotes that circulate on LinkedIn are credited to the wrong person.</p>
+      </div>
+
+      <!-- image -->
+      <div id="paneImage" class="hide">
+        <div class="drop" id="drop" tabindex="0" role="button">
+          <b>Add an image</b>
+          Click, or drag a PNG or JPG here
+        </div>
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hide">
+        <div class="field" style="margin-top:12px"><span>Fit</span>
+          <div class="seg" id="segFit">
+            <button data-v="contain" class="on">Fit whole image</button>
+            <button data-v="cover">Fill the slide</button>
+          </div>
+        </div>
+        <label class="field" style="margin-top:12px"><span>Caption</span>
+          <input type="text" id="fCaption" placeholder="Optional" autocomplete="off">
+        </label>
+        <div class="acts" style="margin-top:12px">
+          <button class="ghost danger" id="bImgClear">Remove image</button>
+        </div>
+      </div>
+
+      <div class="acts">
+        <button class="ghost" id="bDup">Duplicate</button>
+        <button class="ghost" id="bLeft">← Move</button>
+        <button class="ghost" id="bRight">Move →</button>
+        <button class="ghost danger" id="bDel">Delete</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="lbl"><span>Colours</span></div>
+      <div class="row2">
+        <label class="field"><span>Background</span>
+          <div class="swatch">
+            <input type="color" id="cBgP" value="#0B0D10" aria-label="Background colour">
+            <input type="text" id="cBgT" value="#0B0D10" spellcheck="false">
+          </div>
+        </label>
+        <label class="field"><span>Text</span>
+          <div class="swatch">
+            <input type="color" id="cFgP" value="#E8E5DE" aria-label="Text colour">
+            <input type="text" id="cFgT" value="#E8E5DE" spellcheck="false">
+          </div>
+        </label>
+      </div>
+      <div class="contrast" id="contrast">
+        <span>Contrast <b id="ratio">—</b></span>
+        <span class="verdict" id="verdict">—</span>
+      </div>
+      <div class="field"><span>Presets</span>
+        <div class="presets" id="presets"></div>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="lbl"><span>Deck</span></div>
+      <div class="field"><span>Shape</span>
+        <div class="seg" id="segFormat">
+          <button data-v="square" class="on">Square 1080</button>
+          <button data-v="portrait">Portrait 1350</button>
+        </div>
+      </div>
+      <div class="field"><span>Typeface</span>
+        <div class="seg" id="segFont">
+          <button data-v="sans" class="on">Sans</button>
+          <button data-v="mono">Mono</button>
+        </div>
+      </div>
+      <label class="field"><span>Footer on every slide</span>
+        <input type="text" id="fFooter" placeholder="@yourhandle" autocomplete="off">
+      </label>
+      <div class="field"><span>Slide numbers</span>
+        <div class="seg" id="segNums">
+          <button data-v="1" class="on">Show</button>
+          <button data-v="0">Hide</button>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ============ STAGE ============ -->
+  <main class="stage">
+    <div class="viewport"><canvas id="preview"></canvas></div>
+    <div class="strip" id="strip"></div>
+    <div class="exportbar">
+      <button class="primary" id="bPdf">Download PDF</button>
+      <span class="meta" id="meta"></span>
+    </div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* =================================================================
+   PERSISTENCE — in-memory only right now, so the deck clears on
+   reload. On your own hosting, uncomment the lines below and delete
+   the placeholder `return null;`.
+
+   Note: images are stored as base64 and browser storage caps at
+   about 5MB, so saving is skipped when the deck gets too large.
+   ================================================================= */
+function loadDeck(){
+  // try { return JSON.parse(localStorage.getItem('carousel')); } catch(e) { return null; }
+  return null;
+}
+function saveDeck(){
+  // try {
+  //   const s = JSON.stringify(deck);
+  //   if (s.length < 4500000) localStorage.setItem('carousel', s);
+  // } catch(e) {}
+}
+
+const SIZES = { square:[1080,1080], portrait:[1080,1350] };
+const PRESETS = [
+  { name:'Ink',    bg:'#0B0D10', fg:'#E8E5DE' },
+  { name:'Paper',  bg:'#F5F2EC', fg:'#14161A' },
+  { name:'Signal', bg:'#E0A548', fg:'#14161A' },
+  { name:'Deep',   bg:'#14304A', fg:'#EAF2F8' },
+  { name:'Forest', bg:'#2E4034', fg:'#E9EFE7' },
+  { name:'Bone',   bg:'#E8E5DE', fg:'#2E3941' }
+];
+
+const blank = () => ({ type:'text', title:'', body:'', quote:'', source:'', img:null, fit:'contain', caption:'' });
+
+const deck = loadDeck() || {
+  format:'square', bg:'#0B0D10', fg:'#E8E5DE', font:'sans', footer:'', numbers:true,
+  slides:[
+    Object.assign(blank(), { title:'Most carousels die on slide one', body:'The first slide has one job: earn the swipe. Everything else is detail.' }),
+    Object.assign(blank(), { type:'quote', quote:'The unexamined life is not worth living.', source:'Socrates, in Plato’s Apology' }),
+    Object.assign(blank(), { title:'End with the ask', body:'Tell people exactly what to do next. Follow, comment, or share.' })
+  ]
+};
+let cur = 0;
+
+const $ = id => document.getElementById(id);
+const pv = $('preview'), pctx = pv.getContext('2d');
+const imgCache = new Map();          // dataURL -> HTMLImageElement
+
+/* ---------- helpers ---------- */
+function wrap(ctx, text, maxW){
+  const out = [];
+  String(text || '').split('\n').forEach(para => {
+    if (!para.trim()) { out.push(''); return; }
+    let line = '';
+    para.trim().split(/\s+/).forEach(w => {
+      const t = line ? line + ' ' + w : w;
+      if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; }
+      else line = t;
+    });
+    if (line) out.push(line);
+  });
+  return out;
+}
+const famOf = () => deck.font === 'mono' ? '"IBM Plex Mono", monospace' : '"IBM Plex Sans", sans-serif';
+
+function boxFit(iw, ih, bw, bh, mode){
+  const ir = iw / ih, br = bw / bh;
+  let w, h;
+  if (mode === 'cover') { if (ir > br) { h = bh; w = bh * ir; } else { w = bw; h = bw / ir; } }
+  else                  { if (ir > br) { w = bw; h = bw / ir; } else { h = bh; w = bh * ir; } }
+  return { w, h };
+}
+
+/* ---------- one draw function: preview, thumbnails and PDF ---------- */
+function drawSlide(ctx, s, i, W, H){
+  const fam = famOf();
+  const pad = Math.round(W * 0.089);
+  const maxW = W - pad * 2;
+  const footH = Math.round(W * 0.024);
+  const hasFoot = !!(deck.footer || deck.numbers);
+  const bottom = H - pad - (hasFoot ? footH + Math.round(W * 0.03) : 0);
+
+  ctx.fillStyle = deck.bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = deck.fg;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+
+  if (s.type === 'quote')      drawQuote(ctx, s, W, H, pad, maxW, bottom, fam);
+  else if (s.type === 'image') drawImage(ctx, s, W, H, pad, maxW, bottom, fam);
+  else                         drawText(ctx, s, W, H, pad, maxW, bottom, fam);
+
+  if (hasFoot){
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = deck.fg;
+    ctx.font = `400 ${footH}px ${fam}`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    if (deck.footer) ctx.fillText(deck.footer, pad, H - pad);
+    if (deck.numbers){
+      const t = String(i+1).padStart(2,'0') + ' / ' + String(deck.slides.length).padStart(2,'0');
+      ctx.fillText(t, W - pad - ctx.measureText(t).width, H - pad);
+    }
+    ctx.restore();
+  }
+}
+
+function drawText(ctx, s, W, H, pad, maxW, bottom, fam){
+  let tS = Math.round(W*0.074), bS = Math.round(W*0.034), tL, bL;
+  for (let p = 0; p < 26; p++){
+    ctx.font = `600 ${tS}px ${fam}`; tL = wrap(ctx, s.title, maxW);
+    ctx.font = `400 ${bS}px ${fam}`; bL = wrap(ctx, s.body, maxW);
+    const tot = tL.length*tS*1.16 + (tL.length && bL.length ? W*0.042 : 0) + bL.length*bS*1.58;
+    if (tot <= bottom - pad) break;
+    tS = Math.round(tS*0.94); bS = Math.round(bS*0.94);
+    if (tS < 20) break;
+  }
+  let y = pad;
+  ctx.font = `600 ${tS}px ${fam}`;
+  tL.forEach(l => { ctx.fillText(l, pad, y); y += tS*1.16; });
+  if (tL.length && bL.length) y += W*0.042;
+  ctx.font = `400 ${bS}px ${fam}`;
+  bL.forEach(l => { ctx.fillText(l, pad, y); y += bS*1.58; });
+}
+
+function drawQuote(ctx, s, W, H, pad, maxW, bottom, fam){
+  // oversized opening mark, set low so it reads as texture not content
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.font = `600 ${Math.round(W*0.2)}px ${fam}`;
+  ctx.fillText('\u201C', pad - Math.round(W*0.012), pad - Math.round(W*0.03));
+  ctx.restore();
+
+  const srcS = Math.round(W*0.028);
+  let qS = Math.round(W*0.062), qL;
+  for (let p = 0; p < 26; p++){
+    ctx.font = `600 ${qS}px ${fam}`;
+    qL = wrap(ctx, s.quote, maxW);
+    const tot = qL.length*qS*1.32 + (s.source ? W*0.05 + srcS*1.4 : 0);
+    if (tot <= bottom - pad - W*0.1) break;
+    qS = Math.round(qS*0.94);
+    if (qS < 20) break;
+  }
+  const blockH = qL.length*qS*1.32 + (s.source ? W*0.05 + srcS*1.4 : 0);
+  let y = pad + W*0.08 + Math.max(0, (bottom - pad - W*0.08 - blockH) / 2);
+
+  ctx.font = `600 ${qS}px ${fam}`;
+  qL.forEach(l => { ctx.fillText(l, pad, y); y += qS*1.32; });
+
+  if (s.source){
+    y += W*0.05;
+    ctx.save();
+    ctx.globalAlpha = 0.62;
+    ctx.font = `400 ${srcS}px ${fam}`;
+    ctx.fillText('— ' + s.source, pad, y);
+    ctx.restore();
+  }
+}
+
+function drawImage(ctx, s, W, H, pad, maxW, bottom, fam){
+  const capS = Math.round(W*0.03);
+  const capH = s.caption ? capS*1.5 + W*0.035 : 0;
+  const bx = pad, by = pad, bw = maxW, bh = bottom - pad - capH;
+
+  const im = s.img ? imgCache.get(s.img) : null;
+  if (im && im.complete && im.naturalWidth){
+    const { w, h } = boxFit(im.naturalWidth, im.naturalHeight, bw, bh, s.fit);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(bx, by, bw, bh); ctx.clip();
+    ctx.drawImage(im, bx + (bw - w)/2, by + (bh - h)/2, w, h);
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = deck.fg;
+    ctx.lineWidth = Math.max(2, W*0.003);
+    ctx.setLineDash([W*0.02, W*0.016]);
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = deck.fg;
+    ctx.font = `400 ${Math.round(W*0.028)}px ${fam}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('No image yet', bx + bw/2, by + bh/2);
+    ctx.restore();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  }
+
+  if (s.caption){
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = deck.fg;
+    ctx.font = `400 ${capS}px ${fam}`;
+    const lines = wrap(ctx, s.caption, maxW).slice(0, 2);
+    let y = by + bh + W*0.035;
+    lines.forEach(l => { ctx.fillText(l, pad, y); y += capS*1.5; });
+    ctx.restore();
+  }
+}
+
+/* ---------- contrast ---------- */
+function lum(hex){
+  const c = hex.replace('#','');
+  const v = [0,2,4].map(i => {
+    const x = parseInt(c.substr(i,2),16)/255;
+    return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4);
+  });
+  return 0.2126*v[0] + 0.7152*v[1] + 0.0722*v[2];
+}
+const ratio = (a,b) => { const l1=lum(a), l2=lum(b); return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05); };
+const isHex = s => /^#[0-9a-fA-F]{6}$/.test(s);
+
+/* ---------- render ---------- */
+function render(){
+  const [W,H] = SIZES[deck.format];
+  pv.width = W; pv.height = H;
+  drawSlide(pctx, deck.slides[cur], cur, W, H);
+
+  $('slideIdx').textContent = String(cur+1).padStart(2,'0') + ' / ' + String(deck.slides.length).padStart(2,'0');
+  $('meta').innerHTML = `<b>${deck.slides.length}</b> slides · <b>${W}×${H}</b> · PDF for LinkedIn`;
+
+  const r = ratio(deck.bg, deck.fg);
+  $('ratio').textContent = r.toFixed(1) + ' : 1';
+  $('contrast').classList.toggle('good', r >= 4.5);
+  $('contrast').classList.toggle('bad',  r < 4.5);
+  $('verdict').textContent = r >= 7 ? 'Excellent' : r >= 4.5 ? 'Readable' : 'Too low';
+
+  $('bDel').disabled   = deck.slides.length <= 1;
+  $('bLeft').disabled  = cur === 0;
+  $('bRight').disabled = cur === deck.slides.length - 1;
+  $('bImgClear').disabled = !deck.slides[cur].img;
+
+  drawStrip();
+  saveDeck();
+}
+
+function drawStrip(){
+  const [W,H] = SIZES[deck.format];
+  const tw = 62, th = Math.round(tw * H / W);
+  const strip = $('strip');
+  strip.innerHTML = '';
+  deck.slides.forEach((s,i) => {
+    const b = document.createElement('button');
+    b.className = 'thumb' + (i === cur ? ' on' : '');
+    b.title = 'Slide ' + (i+1);
+    const c = document.createElement('canvas');
+    c.width = tw; c.height = th;
+    const cx = c.getContext('2d');
+    cx.scale(tw/W, tw/W);
+    drawSlide(cx, s, i, W, H);
+    const n = document.createElement('span');
+    n.className = 'n';
+    n.textContent = String(i+1).padStart(2,'0');
+    b.append(c, n);
+    b.addEventListener('click', () => { cur = i; syncFields(); render(); });
+    strip.append(b);
+  });
+  const add = document.createElement('button');
+  add.className = 'addslide'; add.textContent = '+'; add.title = 'Add slide';
+  add.style.height = th + 'px';
+  add.addEventListener('click', addSlide);
+  strip.append(add);
+}
+
+function syncFields(){
+  const s = deck.slides[cur];
+  $('fTitle').value = s.title; $('fBody').value = s.body;
+  $('fQuote').value = s.quote; $('fSource').value = s.source;
+  $('fCaption').value = s.caption;
+  $('paneText').classList.toggle('hide', s.type !== 'text');
+  $('paneQuote').classList.toggle('hide', s.type !== 'quote');
+  $('paneImage').classList.toggle('hide', s.type !== 'image');
+  $('segType').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === s.type));
+  $('segFit').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === s.fit));
+}
+
+/* ---------- editing ---------- */
+function addSlide(){
+  deck.slides.splice(cur+1, 0, blank());
+  cur++; syncFields(); render(); $('fTitle').focus();
+}
+const bindText = (id, key) => $(id).addEventListener('input', e => { deck.slides[cur][key] = e.target.value; render(); });
+bindText('fTitle','title'); bindText('fBody','body');
+bindText('fQuote','quote'); bindText('fSource','source');
+bindText('fCaption','caption');
+
+$('bDup').addEventListener('click', () => { deck.slides.splice(cur+1,0,{...deck.slides[cur]}); cur++; syncFields(); render(); });
+$('bDel').addEventListener('click', () => {
+  if (deck.slides.length <= 1) return;
+  deck.slides.splice(cur,1); cur = Math.max(0,cur-1); syncFields(); render();
+});
+$('bLeft').addEventListener('click', () => {
+  if (!cur) return;
+  [deck.slides[cur-1], deck.slides[cur]] = [deck.slides[cur], deck.slides[cur-1]]; cur--; render();
+});
+$('bRight').addEventListener('click', () => {
+  if (cur === deck.slides.length-1) return;
+  [deck.slides[cur+1], deck.slides[cur]] = [deck.slides[cur], deck.slides[cur+1]]; cur++; render();
+});
+
+/* ---------- images ---------- */
+const MAXPX = 1600;   // downscale on import so decks stay light
+function takeFile(f){
+  if (!f || !f.type.startsWith('image/')) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const probe = new Image();
+    probe.onload = () => {
+      const sc = Math.min(1, MAXPX / Math.max(probe.width, probe.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(probe.width * sc);
+      c.height = Math.round(probe.height * sc);
+      c.getContext('2d').drawImage(probe, 0, 0, c.width, c.height);
+      const url = c.toDataURL('image/jpeg', 0.92);
+      const im = new Image();
+      im.onload = () => {
+        imgCache.set(url, im);
+        deck.slides[cur].img = url;
+        deck.slides[cur].type = 'image';
+        syncFields(); render();
+      };
+      im.src = url;
+    };
+    probe.src = fr.result;
+  };
+  fr.readAsDataURL(f);
+}
+$('drop').addEventListener('click', () => $('file').click());
+$('drop').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
+$('file').addEventListener('change', e => { takeFile(e.target.files[0]); e.target.value = ''; });
+['dragenter','dragover'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave','drop'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+$('drop').addEventListener('drop', e => takeFile(e.dataTransfer.files[0]));
+$('bImgClear').addEventListener('click', () => { deck.slides[cur].img = null; render(); });
+
+/* ---------- colours ---------- */
+function bindColour(pick, txt, key){
+  $(pick).addEventListener('input', e => { deck[key] = e.target.value.toUpperCase(); $(txt).value = deck[key]; render(); });
+  $(txt).addEventListener('input', e => {
+    const v = e.target.value.trim();
+    if (!isHex(v)) return;
+    deck[key] = v.toUpperCase(); $(pick).value = deck[key]; render();
+  });
+}
+bindColour('cBgP','cBgT','bg');
+bindColour('cFgP','cFgT','fg');
+
+PRESETS.forEach(p => {
+  const b = document.createElement('button');
+  b.style.background = p.bg; b.style.color = p.fg;
+  b.textContent = 'A'; b.title = p.name;
+  b.addEventListener('click', () => {
+    deck.bg = p.bg; deck.fg = p.fg;
+    $('cBgP').value = p.bg; $('cBgT').value = p.bg;
+    $('cFgP').value = p.fg; $('cFgT').value = p.fg;
+    render();
+  });
+  $('presets').append(b);
+});
+
+/* ---------- segmented controls ---------- */
+function seg(id, fn){
+  $(id).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $(id).querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    fn(b.dataset.v);
+  });
+}
+seg('segType',   v => { deck.slides[cur].type = v; syncFields(); render(); });
+seg('segFit',    v => { deck.slides[cur].fit  = v; render(); });
+seg('segFormat', v => { deck.format = v; render(); });
+seg('segFont',   v => { deck.font = v; render(); });
+seg('segNums',   v => { deck.numbers = v === '1'; render(); });
+$('fFooter').addEventListener('input', e => { deck.footer = e.target.value; render(); });
+
+/* ---------- export ---------- */
+$('bPdf').addEventListener('click', () => {
+  if (!window.jspdf){ alert('The PDF library did not load. Check your connection and reload the page.'); return; }
+  const btn = $('bPdf');
+  btn.disabled = true; btn.textContent = 'Building…';
+  setTimeout(() => {
+    try {
+      const [W,H] = SIZES[deck.format];
+      const pw = W*0.75, ph = H*0.75;                 // px → pt at 96dpi
+      const orient = ph > pw ? 'portrait' : 'landscape';
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit:'pt', format:[pw,ph], orientation:orient });
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const cx = c.getContext('2d');
+      const anyImage = deck.slides.some(s => s.type === 'image' && s.img);
+
+      deck.slides.forEach((s,i) => {
+        drawSlide(cx, s, i, W, H);
+        if (i) pdf.addPage([pw,ph], orient);
+        // photos compress far better as JPEG; flat colour stays crisp as PNG
+        if (anyImage) pdf.addImage(c.toDataURL('image/jpeg', 0.94), 'JPEG', 0, 0, pw, ph);
+        else pdf.addImage(c.toDataURL('image/png'), 'PNG', 0, 0, pw, ph);
+      });
+
+      const first = deck.slides[0];
+      const stem = (first.title || first.quote || first.caption || 'carousel')
+        .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40) || 'carousel';
+      pdf.save(stem + '.pdf');
+    } catch(err){
+      alert('Could not build the PDF: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Download PDF';
+    }
+  }, 30);
+});
+
+/* ---------- go ---------- */
+syncFields();
+$('cBgP').value = deck.bg; $('cBgT').value = deck.bg;
+$('cFgP').value = deck.fg; $('cFgT').value = deck.fg;
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+render();
+</script>
+</body>
+</html>
