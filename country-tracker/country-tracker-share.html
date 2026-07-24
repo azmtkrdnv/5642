@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B0D10">
+<title>Country Tracker — Azamat</title>
+<meta name="description" content="Track the countries you've visited. 195 countries, six continents, no sign-up.">
+<meta property="og:title" content="Country Tracker">
+<meta property="og:description" content="Mark the countries you've been to and watch the percentage climb.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://apps.azamat.org/country-tracker/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0D10; --surface:#12161A; --line:#1F262C; --line-bright:#2E3941;
+  --text:#E8E5DE; --muted:#79848D; --dim:#4C555C; --signal:#E0A548;
+  --pad:clamp(20px,5vw,64px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+
+.topbar{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:16px var(--pad);border-bottom:1px solid var(--line);
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+}
+.topbar a:hover{color:var(--text)}
+.topbar .home{color:var(--text)}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 var(--pad) 96px}
+
+.readout{padding:clamp(40px,7vw,72px) 0 0}
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.figure{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:18px}
+.count{font-size:clamp(3rem,12vw,5.5rem);font-weight:300;letter-spacing:-.05em;line-height:.9}
+.of{font-size:1rem;color:var(--dim);letter-spacing:.04em}
+.pct{margin-left:auto;font-size:1.35rem;color:var(--signal);letter-spacing:-.02em}
+.bar{height:3px;background:var(--line);margin-top:26px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--signal);transition:width .35s cubic-bezier(.2,.7,.3,1)}
+
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:34px}
+#q{
+  flex:1 1 200px;background:var(--surface);border:1px solid var(--line-bright);
+  color:var(--text);font:inherit;font-size:13px;padding:11px 14px;border-radius:2px;
+}
+#q::placeholder{color:var(--dim)}
+#q:focus{outline:none;border-color:var(--signal)}
+.ghost{
+  background:none;border:1px solid var(--line-bright);color:var(--muted);
+  font:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding:11px 18px;border-radius:2px;cursor:pointer;transition:.18s;
+}
+.ghost:hover:not(:disabled){color:var(--text);border-color:var(--signal)}
+.ghost:disabled{opacity:.35;cursor:not-allowed}
+.solid{
+  background:var(--signal);border:1px solid var(--signal);color:#12161A;
+  font:inherit;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  padding:11px 20px;border-radius:2px;cursor:pointer;transition:.18s;
+}
+.solid:hover:not(:disabled){background:#EFB45B;border-color:#EFB45B}
+.solid:disabled{opacity:.35;cursor:not-allowed}
+
+.cont{margin-top:52px}
+.chead{
+  display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+  padding-bottom:12px;border-bottom:1px solid var(--line-bright);
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+}
+.chead .n{color:var(--muted)}
+.chead .s{color:var(--dim);letter-spacing:.1em}
+.grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}
+.c{
+  background:none;border:1px solid var(--line);color:var(--muted);
+  font:inherit;font-size:12.5px;padding:7px 12px;border-radius:2px;
+  cursor:pointer;transition:border-color .15s,color .15s,background .15s;
+}
+.c:hover{border-color:var(--line-bright);color:var(--text)}
+.c.on{border-color:var(--signal);color:var(--signal);background:rgba(224,165,72,.09)}
+.hide{display:none !important}
+.c.hide{display:none}
+.cont.hide{display:none}
+.empty{margin-top:44px;font-size:13px;color:var(--dim)}
+
+/* ---------- share ---------- */
+.veil{
+  position:fixed;inset:0;background:rgba(6,8,10,.86);backdrop-filter:blur(3px);
+  display:none;place-items:center;padding:20px;z-index:50;overflow-y:auto;
+}
+.veil.open{display:grid}
+.sheet{
+  background:var(--bg);border:1px solid var(--line-bright);border-radius:3px;
+  width:100%;max-width:440px;padding:clamp(20px,4vw,30px);
+}
+.sheet header{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding-bottom:14px;border-bottom:1px solid var(--line-bright);margin-bottom:20px;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+}
+.x{background:none;border:none;color:var(--dim);font:inherit;font-size:18px;cursor:pointer;line-height:1;padding:2px 4px}
+.x:hover{color:var(--text)}
+#shareCanvas{max-width:100%;max-height:42vh;width:auto;height:auto;display:block;margin:0 auto;border:1px solid var(--line);background:var(--surface)}
+.seg{display:flex;border:1px solid var(--line-bright);border-radius:2px;overflow:hidden;margin-top:16px}
+.seg button{
+  flex:1;background:none;border:none;color:var(--muted);font:inherit;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;padding:9px 4px;cursor:pointer;transition:.15s;
+}
+.seg button + button{border-left:1px solid var(--line-bright)}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:rgba(224,165,72,.12);color:var(--signal)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.acts > *{flex:1 1 auto}
+.rule{
+  display:flex;align-items:center;gap:12px;margin:22px 0 14px;
+  font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+}
+.rule::before,.rule::after{content:"";flex:1;height:1px;background:var(--line)}
+.socials{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.socials a,.socials button{
+  background:none;border:1px solid var(--line-bright);color:var(--muted);
+  font:inherit;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:12px 6px;border-radius:2px;cursor:pointer;text-align:center;transition:.15s;
+}
+.socials a:hover,.socials button:hover{color:var(--text);border-color:var(--signal)}
+.tip{margin-top:16px;font-size:11px;line-height:1.7;color:var(--dim);border-left:2px solid var(--line-bright);padding-left:11px}
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(14px);
+  background:var(--signal);color:#12161A;font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;padding:11px 20px;border-radius:2px;
+  opacity:0;pointer-events:none;transition:.22s;z-index:60;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.foot{
+  border-top:1px solid var(--line);padding:26px var(--pad);
+  display:flex;flex-wrap:wrap;gap:14px 26px;justify-content:space-between;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+}
+.foot a:hover{color:var(--text)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="home" href="https://apps.azamat.org/">azamat.org / apps</a>
+  <a href="https://apps.azamat.org/">← all apps</a>
+</header>
+
+<div class="wrap">
+  <section class="readout">
+    <div class="eyebrow">Country tracker</div>
+    <div class="figure">
+      <span class="count" id="count">0</span>
+      <span class="of">of 195 countries</span>
+      <span class="pct" id="pct">0.0%</span>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="controls">
+      <input id="q" type="search" placeholder="Filter countries…" autocomplete="off" aria-label="Filter countries">
+      <button class="solid" id="share" disabled>Share</button>
+      <button class="ghost" id="reset">Clear all</button>
+    </div>
+  </section>
+
+  <main id="list"></main>
+  <p class="empty" id="noresults" style="display:none">No country matches that.</p>
+</div>
+
+<!-- ---------- share sheet ---------- -->
+<div class="veil" id="veil" role="dialog" aria-modal="true" aria-label="Share your progress">
+  <div class="sheet">
+    <header><span>Share</span><button class="x" id="close" aria-label="Close">✕</button></header>
+
+    <canvas id="shareCanvas"></canvas>
+
+    <div class="seg" id="segFmt">
+      <button data-v="square" class="on">Square</button>
+      <button data-v="story">Story</button>
+    </div>
+
+    <div class="acts">
+      <button class="solid hide" id="native">Share…</button>
+      <button class="ghost" id="copy">Copy image</button>
+      <button class="ghost" id="dl">Download</button>
+    </div>
+
+    <div class="rule">Or post to</div>
+    <div class="socials">
+      <button id="ig">Instagram</button>
+      <a id="tw" target="_blank" rel="noopener">X</a>
+      <a id="fb" target="_blank" rel="noopener">Facebook</a>
+    </div>
+
+    <p class="tip" id="tip"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer class="foot">
+  <span>195 countries · data stays on your device</span>
+  <nav><a href="https://www.azamat.org/">Main site</a> <a href="https://apps.azamat.org/">Apps</a></nav>
+</footer>
+
+<script>
+const DATA = {
+"Africa":"Algeria|Angola|Benin|Botswana|Burkina Faso|Burundi|Cabo Verde|Cameroon|Central African Republic|Chad|Comoros|Congo|Côte d'Ivoire|Djibouti|DR Congo|Egypt|Equatorial Guinea|Eritrea|Eswatini|Ethiopia|Gabon|Gambia|Ghana|Guinea|Guinea-Bissau|Kenya|Lesotho|Liberia|Libya|Madagascar|Malawi|Mali|Mauritania|Mauritius|Morocco|Mozambique|Namibia|Niger|Nigeria|Rwanda|São Tomé and Príncipe|Senegal|Seychelles|Sierra Leone|Somalia|South Africa|South Sudan|Sudan|Tanzania|Togo|Tunisia|Uganda|Zambia|Zimbabwe",
+"Asia":"Afghanistan|Armenia|Azerbaijan|Bahrain|Bangladesh|Bhutan|Brunei|Cambodia|China|Cyprus|Georgia|India|Indonesia|Iran|Iraq|Israel|Japan|Jordan|Kazakhstan|Kuwait|Kyrgyzstan|Laos|Lebanon|Malaysia|Maldives|Mongolia|Myanmar|Nepal|North Korea|Oman|Pakistan|Palestine|Philippines|Qatar|Saudi Arabia|Singapore|South Korea|Sri Lanka|Syria|Tajikistan|Thailand|Timor-Leste|Turkey|Turkmenistan|United Arab Emirates|Uzbekistan|Vietnam|Yemen",
+"Europe":"Albania|Andorra|Austria|Belarus|Belgium|Bosnia and Herzegovina|Bulgaria|Croatia|Czechia|Denmark|Estonia|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Latvia|Liechtenstein|Lithuania|Luxembourg|Malta|Moldova|Monaco|Montenegro|Netherlands|North Macedonia|Norway|Poland|Portugal|Romania|Russia|San Marino|Serbia|Slovakia|Slovenia|Spain|Sweden|Switzerland|Ukraine|United Kingdom|Vatican City",
+"North America":"Antigua and Barbuda|Bahamas|Barbados|Belize|Canada|Costa Rica|Cuba|Dominica|Dominican Republic|El Salvador|Grenada|Guatemala|Haiti|Honduras|Jamaica|Mexico|Nicaragua|Panama|Saint Kitts and Nevis|Saint Lucia|Saint Vincent and the Grenadines|Trinidad and Tobago|United States",
+"South America":"Argentina|Bolivia|Brazil|Chile|Colombia|Ecuador|Guyana|Paraguay|Peru|Suriname|Uruguay|Venezuela",
+"Oceania":"Australia|Fiji|Kiribati|Marshall Islands|Micronesia|Nauru|New Zealand|Palau|Papua New Guinea|Samoa|Solomon Islands|Tonga|Tuvalu|Vanuatu"
+};
+const TOTAL = 195;
+const PAGE  = 'https://apps.azamat.org/country-tracker/';
+
+/* =================================================================
+   PERSISTENCE — in-memory only. On your own hosting, uncomment the
+   lines below and delete the placeholder returns.
+   ================================================================= */
+function load(){
+  // try { return JSON.parse(localStorage.getItem('ct') || '[]'); } catch(e) { return []; }
+  return [];
+}
+function save(){
+  // try { localStorage.setItem('ct', JSON.stringify([...visited])); } catch(e) {}
+}
+
+const visited = new Set(load());
+const $ = id => document.getElementById(id);
+const list = $('list');
+
+/* ---------- build ---------- */
+Object.entries(DATA).forEach(([cont, str]) => {
+  const names = str.split('|');
+  const sec = document.createElement('section');
+  sec.className = 'cont';
+  const head = document.createElement('div');
+  head.className = 'chead';
+  head.innerHTML = `<span class="n">${cont}</span><span class="s" data-stat>0 / ${names.length}</span>`;
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  names.forEach(name => {
+    const b = document.createElement('button');
+    b.className = 'c'; b.type = 'button'; b.textContent = name;
+    b.dataset.name = name.toLowerCase();
+    b.setAttribute('aria-pressed','false');
+    if (visited.has(name)){ b.classList.add('on'); b.setAttribute('aria-pressed','true'); }
+    b.addEventListener('click', () => {
+      const on = b.classList.toggle('on');
+      b.setAttribute('aria-pressed', String(on));
+      on ? visited.add(name) : visited.delete(name);
+      save(); render();
+    });
+    grid.append(b);
+  });
+  sec.append(head, grid);
+  list.append(sec);
+});
+
+function render(){
+  const n = visited.size;
+  $('count').textContent = n;
+  $('pct').textContent = (n/TOTAL*100).toFixed(1) + '%';
+  $('bar').style.width = (n/TOTAL*100) + '%';
+  $('share').disabled = n === 0;
+  document.querySelectorAll('.cont').forEach(sec => {
+    sec.querySelector('[data-stat]').textContent =
+      `${sec.querySelectorAll('.c.on').length} / ${sec.querySelectorAll('.c').length}`;
+  });
+  save();
+}
+
+$('q').addEventListener('input', e => {
+  const term = e.target.value.trim().toLowerCase();
+  let any = false;
+  document.querySelectorAll('.cont').forEach(sec => {
+    let shown = 0;
+    sec.querySelectorAll('.c').forEach(b => {
+      const match = !term || b.dataset.name.includes(term);
+      b.classList.toggle('hide', !match);
+      if (match) shown++;
+    });
+    sec.classList.toggle('hide', shown === 0);
+    if (shown) any = true;
+  });
+  $('noresults').style.display = any ? 'none' : 'block';
+});
+
+$('reset').addEventListener('click', () => {
+  if (visited.size && !confirm('Clear every country you have marked?')) return;
+  visited.clear();
+  document.querySelectorAll('.c.on').forEach(b => { b.classList.remove('on'); b.setAttribute('aria-pressed','false'); });
+  save(); render();
+});
+
+/* =================================================================
+   SHARE IMAGE
+   ================================================================= */
+const FMT = { square:[1080,1080], story:[1080,1920] };
+let fmt = 'square';
+const sc = $('shareCanvas'), sctx = sc.getContext('2d');
+
+function drawShare(){
+  const [W,H] = FMT[fmt];
+  sc.width = W; sc.height = H;
+  const n = visited.size, pct = n/TOTAL*100;
+  const pad = Math.round(W*0.11);
+  const fam = '"IBM Plex Mono", monospace';
+  const cy = H/2;
+
+  sctx.fillStyle = '#0B0D10';
+  sctx.fillRect(0,0,W,H);
+  sctx.textBaseline = 'alphabetic';
+  sctx.textAlign = 'left';
+
+  // eyebrow
+  sctx.fillStyle = '#79848D';
+  sctx.font = `500 ${Math.round(W*0.026)}px ${fam}`;
+  const eb = 'I   V I S I T E D';
+  sctx.fillText(eb, pad, cy - W*0.30);
+
+  // the number
+  const numS = Math.round(W*0.30);
+  sctx.fillStyle = '#E8E5DE';
+  sctx.font = `300 ${numS}px ${fam}`;
+  const num = String(n);
+  sctx.fillText(num, pad - Math.round(W*0.014), cy - W*0.09);
+  const numW = sctx.measureText(num).width;
+
+  // of 195
+  sctx.fillStyle = '#4C555C';
+  sctx.font = `300 ${Math.round(W*0.05)}px ${fam}`;
+  sctx.fillText('/ 195', pad + numW, cy - W*0.10);
+
+  // label
+  sctx.fillStyle = '#79848D';
+  sctx.font = `400 ${Math.round(W*0.036)}px ${fam}`;
+  sctx.fillText('countries in the world', pad, cy - W*0.015);
+
+  // progress bar
+  const barY = cy + W*0.075, barH = Math.round(W*0.008), barW = W - pad*2;
+  sctx.fillStyle = '#1F262C';
+  sctx.fillRect(pad, barY, barW, barH);
+  sctx.fillStyle = '#E0A548';
+  sctx.fillRect(pad, barY, Math.max(barH, barW * pct/100), barH);
+
+  // percentage
+  sctx.fillStyle = '#E0A548';
+  sctx.font = `400 ${Math.round(W*0.095)}px ${fam}`;
+  sctx.fillText(pct.toFixed(1) + '%', pad, barY + W*0.135);
+  sctx.fillStyle = '#4C555C';
+  sctx.font = `400 ${Math.round(W*0.026)}px ${fam}`;
+  sctx.fillText('of the world', pad, barY + W*0.178);
+
+  // footer
+  sctx.fillStyle = '#4C555C';
+  sctx.font = `400 ${Math.round(W*0.024)}px ${fam}`;
+  sctx.fillText('apps.azamat.org/country-tracker', pad, H - pad);
+}
+
+const shareText = () => {
+  const n = visited.size;
+  return `I have been to ${n} of the world's 195 countries — ${(n/TOTAL*100).toFixed(1)}%. Track yours:`;
+};
+
+function toBlob(){
+  return new Promise(res => sc.toBlob(res, 'image/png'));
+}
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+async function nativeShare(){
+  try {
+    const blob = await toBlob();
+    const file = new File([blob], 'countries.png', { type:'image/png' });
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], text: shareText() + ' ' + PAGE });
+      return true;
+    }
+  } catch(e){
+    // user dismissed the sheet — that counts as handled, don't also download
+    if (e && e.name === 'AbortError') return true;
+  }
+  return false;
+}
+
+function download(){
+  const a = document.createElement('a');
+  a.download = `countries-${visited.size}-of-195.png`;
+  a.href = sc.toDataURL('image/png');
+  a.click();
+}
+
+/* ---------- wiring ---------- */
+$('share').addEventListener('click', () => {
+  drawShare();
+  const url = encodeURIComponent(PAGE);
+  const txt = encodeURIComponent(shareText());
+  $('tw').href = `https://twitter.com/intent/tweet?text=${txt}&url=${url}`;
+  $('fb').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+  $('native').classList.toggle('hide', !(navigator.canShare && navigator.share));
+  $('copy').style.display = window.ClipboardItem ? '' : 'none';
+  $('tip').textContent = (navigator.canShare && navigator.share)
+    ? 'Share… hands the image straight to Instagram, X or Facebook. The buttons below open a post with the text ready, but you add the image yourself.'
+    : 'X and Facebook cannot receive an image from a link. Copy or download it first, then paste it into the post that opens.';
+  $('veil').classList.add('open');
+  $('close').focus();
+});
+
+const closeSheet = () => { $('veil').classList.remove('open'); $('share').focus(); };
+$('close').addEventListener('click', closeSheet);
+$('veil').addEventListener('click', e => { if (e.target === $('veil')) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('veil').classList.contains('open')) closeSheet(); });
+
+$('segFmt').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('segFmt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  fmt = b.dataset.v;
+  drawShare();
+});
+
+$('native').addEventListener('click', nativeShare);
+$('dl').addEventListener('click', () => { download(); toast('Image saved'); });
+
+$('copy').addEventListener('click', async () => {
+  try {
+    const blob = await toBlob();
+    await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
+    toast('Copied — paste it into your post');
+  } catch(e){
+    download();
+    toast('Copy blocked — downloaded instead');
+  }
+});
+
+// Instagram has no web composer, so hand off natively or fall back to a file
+$('ig').addEventListener('click', async () => {
+  if (await nativeShare()) return;
+  download();
+  toast('Saved — open Instagram and post it');
+});
+
+/* ---------- go ---------- */
+render();
+</script>
+</body>
+</html>
