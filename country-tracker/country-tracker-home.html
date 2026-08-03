@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B0D10">
+<title>Country Tracker — Azamat</title>
+<meta name="description" content="Track the countries you've visited. 195 countries, six continents, no sign-up.">
+<meta property="og:title" content="Country Tracker">
+<meta property="og:description" content="Mark the countries you've been to and watch the percentage climb.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://apps.azamat.org/country-tracker/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0D10; --surface:#12161A; --line:#1F262C; --line-bright:#2E3941;
+  --text:#E8E5DE; --muted:#79848D; --dim:#4C555C; --signal:#E0A548;
+  --pad:clamp(20px,5vw,64px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+
+.topbar{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:16px var(--pad);border-bottom:1px solid var(--line);
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+}
+.topbar a:hover{color:var(--text)}
+.topbar .home{color:var(--text)}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 var(--pad) 96px}
+
+.readout{padding:clamp(40px,7vw,72px) 0 0}
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.figure{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:18px}
+.count{font-size:clamp(3rem,12vw,5.5rem);font-weight:300;letter-spacing:-.05em;line-height:.9}
+.of{font-size:1rem;color:var(--dim);letter-spacing:.04em}
+.pct{margin-left:auto;font-size:1.35rem;color:var(--signal);letter-spacing:-.02em}
+.bar{height:3px;background:var(--line);margin-top:26px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--signal);transition:width .35s cubic-bezier(.2,.7,.3,1)}
+
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:34px}
+#q{
+  flex:1 1 200px;background:var(--surface);border:1px solid var(--line-bright);
+  color:var(--text);font:inherit;font-size:13px;padding:11px 14px;border-radius:2px;
+}
+#q::placeholder{color:var(--dim)}
+#q:focus{outline:none;border-color:var(--signal)}
+.ghost{
+  background:none;border:1px solid var(--line-bright);color:var(--muted);
+  font:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding:11px 18px;border-radius:2px;cursor:pointer;transition:.18s;
+}
+.ghost:hover:not(:disabled){color:var(--text);border-color:var(--signal)}
+.ghost:disabled{opacity:.35;cursor:not-allowed}
+.solid{
+  background:var(--signal);border:1px solid var(--signal);color:#12161A;
+  font:inherit;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  padding:11px 20px;border-radius:2px;cursor:pointer;transition:.18s;
+}
+.solid:hover:not(:disabled){background:#EFB45B;border-color:#EFB45B}
+.solid:disabled{opacity:.35;cursor:not-allowed}
+
+.cont{margin-top:52px}
+.chead{
+  display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+  padding-bottom:12px;border-bottom:1px solid var(--line-bright);
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+}
+.chead .n{color:var(--muted)}
+.chead .s{color:var(--dim);letter-spacing:.1em}
+.grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}
+.c{
+  display:flex;align-items:stretch;overflow:hidden;
+  border:1px solid var(--line);border-radius:2px;color:var(--muted);
+  transition:border-color .15s,color .15s,background .15s;
+}
+.c:hover{border-color:var(--line-bright);color:var(--text)}
+.c.on{border-color:var(--signal);color:var(--signal);background:rgba(224,165,72,.09)}
+.c.home{border-color:var(--signal);background:rgba(224,165,72,.16)}
+.c.hide{display:none}
+.c-pick{
+  display:flex;align-items:center;gap:7px;
+  background:none;border:none;color:inherit;font:inherit;font-size:12.5px;
+  padding:7px 10px;cursor:pointer;
+}
+.c .fl{width:18px;height:13px;object-fit:cover;border-radius:1px;flex:none;opacity:.55;transition:opacity .15s}
+.c:hover .fl{opacity:.9}
+.c.on .fl{opacity:1}
+.c-home{
+  display:flex;align-items:center;justify-content:center;flex:none;
+  background:none;border:none;border-left:1px solid var(--line);
+  color:var(--dim);cursor:pointer;padding:0 9px;transition:color .15s,background .15s;
+}
+.c-home:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.c-home svg{width:13px;height:13px;display:block;fill:none;stroke:currentColor;stroke-width:2}
+.c.home .c-home{color:var(--signal)}
+.c.home .c-home svg{fill:rgba(224,165,72,.25)}
+.cont.hide{display:none}
+.empty{margin-top:44px;font-size:13px;color:var(--dim)}
+
+/* ---------- share ---------- */
+.veil{
+  position:fixed;inset:0;background:rgba(6,8,10,.86);backdrop-filter:blur(3px);
+  display:none;place-items:center;padding:20px;z-index:50;overflow-y:auto;
+}
+.veil.open{display:grid}
+.sheet{
+  background:var(--bg);border:1px solid var(--line-bright);border-radius:3px;
+  width:100%;max-width:440px;padding:clamp(20px,4vw,30px);
+}
+.sheet header{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding-bottom:14px;border-bottom:1px solid var(--line-bright);margin-bottom:20px;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+}
+.x{background:none;border:none;color:var(--dim);font:inherit;font-size:18px;cursor:pointer;line-height:1;padding:2px 4px}
+.x:hover{color:var(--text)}
+#shareCanvas{max-width:100%;max-height:44vh;width:auto;height:auto;display:block;margin:0 auto;border:1px solid var(--line);background:var(--surface)}
+.seg{display:flex;border:1px solid var(--line-bright);border-radius:2px;overflow:hidden;margin-top:16px}
+.seg button{
+  flex:1;background:none;border:none;color:var(--muted);font:inherit;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;padding:9px 4px;cursor:pointer;transition:.15s;
+}
+.seg button + button{border-left:1px solid var(--line-bright)}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:rgba(224,165,72,.12);color:var(--signal)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.acts > *{flex:1 1 auto}
+.hide{display:none !important}
+.rule{
+  display:flex;align-items:center;gap:12px;margin:22px 0 14px;
+  font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+}
+.rule::before,.rule::after{content:"";flex:1;height:1px;background:var(--line)}
+.socials{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.socials a,.socials button{
+  background:none;border:1px solid var(--line-bright);color:var(--muted);
+  font:inherit;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:12px 6px;border-radius:2px;cursor:pointer;text-align:center;transition:.15s;
+}
+.socials a:hover,.socials button:hover{color:var(--text);border-color:var(--signal)}
+.tip{margin-top:16px;font-size:11px;line-height:1.7;color:var(--dim);border-left:2px solid var(--line-bright);padding-left:11px}
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(14px);
+  background:var(--signal);color:#12161A;font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;padding:11px 20px;border-radius:2px;
+  opacity:0;pointer-events:none;transition:.22s;z-index:60;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.foot{
+  border-top:1px solid var(--line);padding:26px var(--pad);
+  display:flex;flex-wrap:wrap;gap:14px 26px;justify-content:space-between;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+}
+.foot a:hover{color:var(--text)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="home" href="https://apps.azamat.org/">azamat.org / apps</a>
+  <a href="https://apps.azamat.org/">← all apps</a>
+</header>
+
+<div class="wrap">
+  <section class="readout">
+    <div class="eyebrow">Country tracker</div>
+    <div class="figure">
+      <span class="count" id="count">0</span>
+      <span class="of">of 195 countries</span>
+      <span class="pct" id="pct">0.0%</span>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="controls">
+      <input id="q" type="search" placeholder="Filter countries…" autocomplete="off" aria-label="Filter countries">
+      <button class="solid" id="share" disabled>Share</button>
+      <button class="ghost" id="reset">Clear all</button>
+    </div>
+  </section>
+
+  <main id="list"></main>
+  <p class="empty" id="noresults" style="display:none">No country matches that.</p>
+</div>
+
+<!-- ---------- share sheet ---------- -->
+<div class="veil" id="veil" role="dialog" aria-modal="true" aria-label="Share your progress">
+  <div class="sheet">
+    <header><span>Share</span><button class="x" id="close" aria-label="Close">✕</button></header>
+
+    <canvas id="shareCanvas"></canvas>
+
+    <div class="seg" id="segFmt">
+      <button data-v="square" class="on">Square</button>
+      <button data-v="story">Story</button>
+    </div>
+
+    <div class="acts">
+      <button class="solid hide" id="native">Share…</button>
+      <button class="ghost" id="copy">Copy image</button>
+      <button class="ghost" id="dl">Download</button>
+    </div>
+
+    <div class="rule">Or post to</div>
+    <div class="socials">
+      <button id="ig">Instagram</button>
+      <a id="tw" target="_blank" rel="noopener">X</a>
+      <a id="fb" target="_blank" rel="noopener">Facebook</a>
+    </div>
+
+    <p class="tip" id="tip"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer class="foot">
+  <span>195 countries · data stays on your device</span>
+  <nav><a href="https://www.azamat.org/">Main site</a> <a href="https://apps.azamat.org/">Apps</a></nav>
+</footer>
+
+<script>
+const DATA = {
+"Africa":"Algeria|Angola|Benin|Botswana|Burkina Faso|Burundi|Cabo Verde|Cameroon|Central African Republic|Chad|Comoros|Congo|Côte d'Ivoire|Djibouti|DR Congo|Egypt|Equatorial Guinea|Eritrea|Eswatini|Ethiopia|Gabon|Gambia|Ghana|Guinea|Guinea-Bissau|Kenya|Lesotho|Liberia|Libya|Madagascar|Malawi|Mali|Mauritania|Mauritius|Morocco|Mozambique|Namibia|Niger|Nigeria|Rwanda|São Tomé and Príncipe|Senegal|Seychelles|Sierra Leone|Somalia|South Africa|South Sudan|Sudan|Tanzania|Togo|Tunisia|Uganda|Zambia|Zimbabwe",
+"Asia":"Afghanistan|Armenia|Azerbaijan|Bahrain|Bangladesh|Bhutan|Brunei|Cambodia|China|Cyprus|Georgia|India|Indonesia|Iran|Iraq|Israel|Japan|Jordan|Kazakhstan|Kuwait|Kyrgyzstan|Laos|Lebanon|Malaysia|Maldives|Mongolia|Myanmar|Nepal|North Korea|Oman|Pakistan|Palestine|Philippines|Qatar|Saudi Arabia|Singapore|South Korea|Sri Lanka|Syria|Tajikistan|Thailand|Timor-Leste|Turkey|Turkmenistan|United Arab Emirates|Uzbekistan|Vietnam|Yemen",
+"Europe":"Albania|Andorra|Austria|Belarus|Belgium|Bosnia and Herzegovina|Bulgaria|Croatia|Czechia|Denmark|Estonia|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Latvia|Liechtenstein|Lithuania|Luxembourg|Malta|Moldova|Monaco|Montenegro|Netherlands|North Macedonia|Norway|Poland|Portugal|Romania|Russia|San Marino|Serbia|Slovakia|Slovenia|Spain|Sweden|Switzerland|Ukraine|United Kingdom|Vatican City",
+"North America":"Antigua and Barbuda|Bahamas|Barbados|Belize|Canada|Costa Rica|Cuba|Dominica|Dominican Republic|El Salvador|Grenada|Guatemala|Haiti|Honduras|Jamaica|Mexico|Nicaragua|Panama|Saint Kitts and Nevis|Saint Lucia|Saint Vincent and the Grenadines|Trinidad and Tobago|United States",
+"South America":"Argentina|Bolivia|Brazil|Chile|Colombia|Ecuador|Guyana|Paraguay|Peru|Suriname|Uruguay|Venezuela",
+"Oceania":"Australia|Fiji|Kiribati|Marshall Islands|Micronesia|Nauru|New Zealand|Palau|Papua New Guinea|Samoa|Solomon Islands|Tonga|Tuvalu|Vanuatu"
+};
+const ISO = {
+"Algeria":"dz","Angola":"ao","Benin":"bj","Botswana":"bw","Burkina Faso":"bf","Burundi":"bi","Cabo Verde":"cv","Cameroon":"cm","Central African Republic":"cf","Chad":"td","Comoros":"km","Congo":"cg","Côte d'Ivoire":"ci","Djibouti":"dj","DR Congo":"cd","Egypt":"eg","Equatorial Guinea":"gq","Eritrea":"er","Eswatini":"sz","Ethiopia":"et","Gabon":"ga","Gambia":"gm","Ghana":"gh","Guinea":"gn","Guinea-Bissau":"gw","Kenya":"ke","Lesotho":"ls","Liberia":"lr","Libya":"ly","Madagascar":"mg","Malawi":"mw","Mali":"ml","Mauritania":"mr","Mauritius":"mu","Morocco":"ma","Mozambique":"mz","Namibia":"na","Niger":"ne","Nigeria":"ng","Rwanda":"rw","São Tomé and Príncipe":"st","Senegal":"sn","Seychelles":"sc","Sierra Leone":"sl","Somalia":"so","South Africa":"za","South Sudan":"ss","Sudan":"sd","Tanzania":"tz","Togo":"tg","Tunisia":"tn","Uganda":"ug","Zambia":"zm","Zimbabwe":"zw",
+"Afghanistan":"af","Armenia":"am","Azerbaijan":"az","Bahrain":"bh","Bangladesh":"bd","Bhutan":"bt","Brunei":"bn","Cambodia":"kh","China":"cn","Cyprus":"cy","Georgia":"ge","India":"in","Indonesia":"id","Iran":"ir","Iraq":"iq","Israel":"il","Japan":"jp","Jordan":"jo","Kazakhstan":"kz","Kuwait":"kw","Kyrgyzstan":"kg","Laos":"la","Lebanon":"lb","Malaysia":"my","Maldives":"mv","Mongolia":"mn","Myanmar":"mm","Nepal":"np","North Korea":"kp","Oman":"om","Pakistan":"pk","Palestine":"ps","Philippines":"ph","Qatar":"qa","Saudi Arabia":"sa","Singapore":"sg","South Korea":"kr","Sri Lanka":"lk","Syria":"sy","Tajikistan":"tj","Thailand":"th","Timor-Leste":"tl","Turkey":"tr","Turkmenistan":"tm","United Arab Emirates":"ae","Uzbekistan":"uz","Vietnam":"vn","Yemen":"ye",
+"Albania":"al","Andorra":"ad","Austria":"at","Belarus":"by","Belgium":"be","Bosnia and Herzegovina":"ba","Bulgaria":"bg","Croatia":"hr","Czechia":"cz","Denmark":"dk","Estonia":"ee","Finland":"fi","France":"fr","Germany":"de","Greece":"gr","Hungary":"hu","Iceland":"is","Ireland":"ie","Italy":"it","Latvia":"lv","Liechtenstein":"li","Lithuania":"lt","Luxembourg":"lu","Malta":"mt","Moldova":"md","Monaco":"mc","Montenegro":"me","Netherlands":"nl","North Macedonia":"mk","Norway":"no","Poland":"pl","Portugal":"pt","Romania":"ro","Russia":"ru","San Marino":"sm","Serbia":"rs","Slovakia":"sk","Slovenia":"si","Spain":"es","Sweden":"se","Switzerland":"ch","Ukraine":"ua","United Kingdom":"gb","Vatican City":"va",
+"Antigua and Barbuda":"ag","Bahamas":"bs","Barbados":"bb","Belize":"bz","Canada":"ca","Costa Rica":"cr","Cuba":"cu","Dominica":"dm","Dominican Republic":"do","El Salvador":"sv","Grenada":"gd","Guatemala":"gt","Haiti":"ht","Honduras":"hn","Jamaica":"jm","Mexico":"mx","Nicaragua":"ni","Panama":"pa","Saint Kitts and Nevis":"kn","Saint Lucia":"lc","Saint Vincent and the Grenadines":"vc","Trinidad and Tobago":"tt","United States":"us",
+"Argentina":"ar","Bolivia":"bo","Brazil":"br","Chile":"cl","Colombia":"co","Ecuador":"ec","Guyana":"gy","Paraguay":"py","Peru":"pe","Suriname":"sr","Uruguay":"uy","Venezuela":"ve",
+"Australia":"au","Fiji":"fj","Kiribati":"ki","Marshall Islands":"mh","Micronesia":"fm","Nauru":"nr","New Zealand":"nz","Palau":"pw","Papua New Guinea":"pg","Samoa":"ws","Solomon Islands":"sb","Tonga":"to","Tuvalu":"tv","Vanuatu":"vu"
+};
+const TOTAL = 195;
+const PAGE  = 'https://apps.azamat.org/country-tracker/';
+const ORDER = Object.values(DATA).flatMap(s => s.split('|'));
+
+/* =================================================================
+   PERSISTENCE — in-memory only. On your own hosting, uncomment the
+   lines below and delete the placeholder returns.
+   ================================================================= */
+function load(){
+  // try { return JSON.parse(localStorage.getItem('ct') || '{"visited":[],"home":null}'); } catch(e) { return {visited:[],home:null}; }
+  return { visited:[], home:null };
+}
+function save(){
+  // try { localStorage.setItem('ct', JSON.stringify({ visited:[...visited], home })); } catch(e) {}
+}
+
+const NAMES = new Set(Object.values(DATA).flatMap(s => s.split('|')));
+const init = load();
+const visited = new Set((init.visited || []).filter(n => NAMES.has(n)));
+let home = (init.home && NAMES.has(init.home)) ? init.home : null;
+if (home) visited.add(home);   // your home is always a visited country
+const $ = id => document.getElementById(id);
+const list = $('list');
+
+const HOME_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></svg>';
+
+/* ---------- flag image source (Twemoji via jsDelivr) ---------- */
+const FLAG_BASE = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/';
+function flagFile(iso){
+  const A = 0x1F1E6;
+  return [...iso.toUpperCase()].map(ch => (A + ch.charCodeAt(0) - 65).toString(16)).join('-');
+}
+const flagURL = name => FLAG_BASE + flagFile(ISO[name]) + '.png';
+
+/* clears whichever chip is currently marked home */
+function clearHome(){
+  home = null;
+  const prev = list.querySelector('.c.home');
+  if (prev){
+    prev.classList.remove('home');
+    const hb = prev.querySelector('.c-home');
+    if (hb) hb.setAttribute('aria-pressed','false');
+  }
+}
+
+/* ---------- build the list ---------- */
+Object.entries(DATA).forEach(([cont, str]) => {
+  const names = str.split('|');
+  const sec = document.createElement('section');
+  sec.className = 'cont';
+  const head = document.createElement('div');
+  head.className = 'chead';
+  head.innerHTML = `<span class="n">${cont}</span><span class="s" data-stat>0 / ${names.length}</span>`;
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  names.forEach(name => {
+    const chip = document.createElement('div');
+    chip.className = 'c';
+    chip.dataset.name = name.toLowerCase();
+
+    // main button — toggles visited
+    const pick = document.createElement('button');
+    pick.className = 'c-pick'; pick.type = 'button';
+    pick.setAttribute('aria-pressed','false');
+    const fl = document.createElement('img');
+    fl.className = 'fl'; fl.loading = 'lazy'; fl.alt = '';
+    fl.crossOrigin = 'anonymous';   // same CORS mode as the share canvas, so the
+    fl.src = flagURL(name);         // browser cache serves the canvas a CORS-clean copy
+    fl.onerror = () => { fl.style.visibility = 'hidden'; };
+    const lab = document.createElement('span');
+    lab.textContent = name;
+    pick.append(fl, lab);
+
+    // home button — marks this the single home country
+    const homeBtn = document.createElement('button');
+    homeBtn.className = 'c-home'; homeBtn.type = 'button';
+    homeBtn.innerHTML = HOME_SVG;
+    homeBtn.title = 'Set as home';
+    homeBtn.setAttribute('aria-label', 'Set ' + name + ' as your home');
+    homeBtn.setAttribute('aria-pressed','false');
+
+    if (visited.has(name)){ chip.classList.add('on'); pick.setAttribute('aria-pressed','true'); }
+    if (home === name){ chip.classList.add('home'); homeBtn.setAttribute('aria-pressed','true'); }
+
+    function setVisited(on){
+      chip.classList.toggle('on', on);
+      pick.setAttribute('aria-pressed', String(on));
+      on ? visited.add(name) : visited.delete(name);
+    }
+
+    pick.addEventListener('click', () => {
+      const on = !chip.classList.contains('on');
+      if (!on && home === name){ clearHome(); }   // un-visiting your home clears home too
+      setVisited(on);
+      save(); render();
+    });
+
+    homeBtn.addEventListener('click', () => {
+      if (home === name){                          // toggle home off
+        clearHome();
+      } else {
+        clearHome();                               // remove any previous home
+        home = name;
+        chip.classList.add('home');
+        homeBtn.setAttribute('aria-pressed','true');
+        if (!chip.classList.contains('on')) setVisited(true);   // home implies visited
+      }
+      save(); render();
+    });
+
+    chip.append(pick, homeBtn);
+    grid.append(chip);
+  });
+  sec.append(head, grid);
+  list.append(sec);
+});
+
+function render(){
+  const n = visited.size;
+  $('count').textContent = n;
+  $('pct').textContent = (n/TOTAL*100).toFixed(1) + '%';
+  $('bar').style.width = (n/TOTAL*100) + '%';
+  $('share').disabled = n === 0;
+  document.querySelectorAll('.cont').forEach(sec => {
+    sec.querySelector('[data-stat]').textContent =
+      `${sec.querySelectorAll('.c.on').length} / ${sec.querySelectorAll('.c').length}`;
+  });
+  save();
+}
+
+$('q').addEventListener('input', e => {
+  const term = e.target.value.trim().toLowerCase();
+  let any = false;
+  document.querySelectorAll('.cont').forEach(sec => {
+    let shown = 0;
+    sec.querySelectorAll('.c').forEach(b => {
+      const match = !term || b.dataset.name.includes(term);
+      b.classList.toggle('hide', !match);
+      if (match) shown++;
+    });
+    sec.classList.toggle('hide', shown === 0);
+    if (shown) any = true;
+  });
+  $('noresults').style.display = any ? 'none' : 'block';
+});
+
+$('reset').addEventListener('click', () => {
+  if (visited.size && !confirm('Clear every country you have marked?')) return;
+  visited.clear();
+  clearHome();
+  document.querySelectorAll('.c.on').forEach(chip => {
+    chip.classList.remove('on');
+    const p = chip.querySelector('.c-pick');
+    if (p) p.setAttribute('aria-pressed','false');
+  });
+  save(); render();
+});
+
+/* =================================================================
+   SHARE IMAGE  —  header + a grid of every selected flag
+   ================================================================= */
+const FMT = { square:[1080,1080], story:[1080,1920] };
+let fmt = 'square';
+const sc = $('shareCanvas'), sctx = sc.getContext('2d');
+const flagImg = new Map();   // name -> HTMLImageElement | 'failed'
+
+function loadFlag(name){
+  return new Promise(res => {
+    if (flagImg.has(name)) return res();
+    const im = new Image();
+    im.crossOrigin = 'anonymous';            // loads clean or fails — never taints canvas
+    const done = ok => { flagImg.set(name, ok ? im : 'failed'); res(); };
+    const timer = setTimeout(() => done(false), 9000);
+    im.onload  = () => { clearTimeout(timer); done(true); };
+    im.onerror = () => { clearTimeout(timer); done(false); };
+    im.src = flagURL(name);
+  });
+}
+const selectedNames = () => ORDER.filter(n => visited.has(n));
+
+/* fit N square cells into gw×gh, largest cells, no overlap */
+function fitGrid(N, gw, gh, maxSlot){
+  let best = { slot:0, cols:1, rows:N };
+  for (let cols = 1; cols <= N; cols++){
+    const rows = Math.ceil(N / cols);
+    const slot = Math.min(gw / cols, gh / rows);
+    if (slot > best.slot) best = { slot, cols, rows };
+  }
+  best.slot = Math.min(best.slot, maxSlot);
+  return best;
+}
+
+/* amber ring + small house badge, drawn fully inside the flag cell */
+function drawHomeMark(x, y, flag){
+  const g = flag * 0.05;
+  sctx.strokeStyle = '#E0A548';
+  sctx.lineWidth = Math.max(2, flag * 0.06);
+  sctx.strokeRect(x - g, y - g, flag + g*2, flag + g*2);
+
+  const r = flag * 0.22;                 // badge radius
+  const bx = x + flag - r, by = y + r;   // top-right, inside the flag box
+  sctx.fillStyle = '#E0A548';
+  sctx.beginPath(); sctx.arc(bx, by, r, 0, Math.PI*2); sctx.fill();
+
+  // house glyph
+  const u = r * 1.15, hx = bx - u/2, hy = by - u/2;
+  sctx.fillStyle = '#12161A';
+  sctx.beginPath();
+  sctx.moveTo(bx, hy);                    // roof apex
+  sctx.lineTo(hx + u, hy + u*0.5);
+  sctx.lineTo(hx, hy + u*0.5);
+  sctx.closePath(); sctx.fill();
+  sctx.fillRect(hx + u*0.2, hy + u*0.5, u*0.6, u*0.48);
+}
+
+function drawShare(){
+  const [W,H] = FMT[fmt];
+  sc.width = W; sc.height = H;
+  const names = selectedNames();
+  const n = names.length, pct = n/TOTAL*100;
+  const fam = '"IBM Plex Mono", monospace';
+  const P = Math.round(W * 0.072);
+
+  sctx.fillStyle = '#0B0D10';
+  sctx.fillRect(0,0,W,H);
+  sctx.textAlign = 'left';
+  sctx.textBaseline = 'alphabetic';
+
+  // ----- header, stacked so nothing overlaps -----
+  let y = P;
+
+  const ebS = Math.round(W*0.028);
+  y += ebS;
+  sctx.font = `500 ${ebS}px ${fam}`;
+  sctx.fillStyle = '#79848D';
+  sctx.fillText('I   V I S I T E D', P, y);
+
+  const numS = Math.round(W*0.13);
+  y += Math.round(W*0.02) + numS;
+  sctx.font = `300 ${numS}px ${fam}`;
+  sctx.fillStyle = '#E8E5DE';
+  const numTxt = String(n);
+  sctx.fillText(numTxt, P, y);
+  const numW = sctx.measureText(numTxt).width;
+  sctx.font = `300 ${Math.round(numS*0.42)}px ${fam}`;
+  sctx.fillStyle = '#4C555C';
+  sctx.fillText('/ ' + TOTAL, P + numW + Math.round(W*0.02), y);
+
+  const pctS = Math.round(W*0.05);
+  y += Math.round(W*0.03) + pctS;
+  sctx.font = `400 ${pctS}px ${fam}`;
+  sctx.fillStyle = '#E0A548';
+  const pctTxt = pct.toFixed(1) + '%';
+  sctx.fillText(pctTxt, P, y);
+  const pctW = sctx.measureText(pctTxt).width;
+  sctx.font = `400 ${Math.round(pctS*0.44)}px ${fam}`;
+  sctx.fillStyle = '#79848D';
+  sctx.fillText('  of the world', P + pctW + Math.round(W*0.02), y);
+
+  // progress bar
+  y += Math.round(W*0.04);
+  const barH = Math.round(W*0.008), barW = W - P*2;
+  sctx.fillStyle = '#1F262C';
+  sctx.fillRect(P, y, barW, barH);
+  sctx.fillStyle = '#E0A548';
+  sctx.fillRect(P, y, Math.max(barH, barW * pct/100), barH);
+  y += barH;
+
+  // ----- reserve footer, then the grid takes the space in between -----
+  const footS = Math.round(W*0.024);
+  const footBaseline = H - P;
+  const gridTop = y + Math.round(W*0.055);
+  const gridBottom = footBaseline - footS - Math.round(W*0.04);
+
+  const gw = W - P*2, gh = gridBottom - gridTop;
+  if (n > 0 && gh > 20){
+    const { slot, cols, rows } = fitGrid(n, gw, gh, Math.round(W*0.14));
+    const usedW = cols * slot, usedH = rows * slot;
+    const ox = P + (gw - usedW)/2;
+    const oy = gridTop + (gh - usedH)/2;
+    const flag = slot * 0.86;                 // inset creates the gap between cells
+    const inset = (slot - flag)/2;
+
+    names.forEach((name, k) => {
+      const cx = ox + (k % cols) * slot + inset;
+      const cy = oy + Math.floor(k / cols) * slot + inset;
+      const im = flagImg.get(name);
+      if (im && im !== 'failed'){
+        const ar = (im.naturalWidth / im.naturalHeight) || 1;
+        let dw = flag, dh = flag;
+        if (ar > 1) dh = flag / ar; else dw = flag * ar;
+        sctx.drawImage(im, cx + (flag-dw)/2, cy + (flag-dh)/2, dw, dh);
+      } else {
+        sctx.strokeStyle = '#2E3941';
+        sctx.lineWidth = Math.max(1, flag*0.03);
+        sctx.strokeRect(cx, cy + flag*0.14, flag, flag*0.72);
+        sctx.fillStyle = '#79848D';
+        sctx.font = `500 ${Math.round(flag*0.3)}px ${fam}`;
+        sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+        sctx.fillText((ISO[name]||'').toUpperCase(), cx + flag/2, cy + flag*0.5);
+        sctx.textAlign = 'left'; sctx.textBaseline = 'alphabetic';
+      }
+      if (name === home) drawHomeMark(cx, cy, flag);   // mark the home flag
+    });
+  }
+
+  sctx.fillStyle = '#4C555C';
+  sctx.font = `400 ${footS}px ${fam}`;
+  sctx.fillText('apps.azamat.org/country-tracker', P, footBaseline);
+}
+
+function drawLoading(){
+  const [W,H] = FMT[fmt];
+  sc.width = W; sc.height = H;
+  sctx.fillStyle = '#0B0D10'; sctx.fillRect(0,0,W,H);
+  sctx.fillStyle = '#79848D';
+  sctx.font = `400 ${Math.round(W*0.03)}px "IBM Plex Mono", monospace`;
+  sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  sctx.fillText('Preparing your flags…', W/2, H/2);
+  sctx.textAlign = 'left'; sctx.textBaseline = 'alphabetic';
+}
+
+const shareText = () => {
+  const n = visited.size;
+  return `I have been to ${n} of the world's 195 countries — ${(n/TOTAL*100).toFixed(1)}%. Track yours:`;
+};
+const toBlob = () => new Promise(res => sc.toBlob(res, 'image/png'));
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+async function nativeShare(){
+  try{
+    const blob = await toBlob();
+    if(!blob) return false;
+    const file = new File([blob], 'countries.png', { type:'image/png' });
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], text: shareText() + ' ' + PAGE });
+      return true;
+    }
+  }catch(e){
+    if (e && e.name === 'AbortError') return true;   // user dismissed — handled
+  }
+  return false;
+}
+function download(){
+  try{
+    const a = document.createElement('a');
+    a.download = `countries-${visited.size}-of-195.png`;
+    a.href = sc.toDataURL('image/png');
+    a.click();
+  }catch(e){ toast('Could not export image'); }
+}
+
+/* ---------- open / close ---------- */
+async function openShare(){
+  $('veil').classList.add('open');
+  $('close').focus();
+  drawLoading();
+  await Promise.all(selectedNames().map(loadFlag));   // resolves even on failure
+  if (!$('veil').classList.contains('open')) return;  // closed while loading
+  drawShare();
+
+  const url = encodeURIComponent(PAGE), txt = encodeURIComponent(shareText());
+  $('tw').href = `https://twitter.com/intent/tweet?text=${txt}&url=${url}`;
+  $('fb').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+  const canNative = !!(navigator.canShare && navigator.share);
+  $('native').classList.toggle('hide', !canNative);
+  $('copy').style.display = window.ClipboardItem ? '' : 'none';
+  $('tip').textContent = canNative
+    ? 'Share… hands the image straight to Instagram, X or Facebook. The buttons below open a post with the text ready — add the image yourself.'
+    : 'X and Facebook cannot receive an image from a link. Copy or download it first, then paste it into the post that opens.';
+}
+$('share').addEventListener('click', openShare);
+
+const closeSheet = () => { $('veil').classList.remove('open'); $('share').focus(); };
+$('close').addEventListener('click', closeSheet);
+$('veil').addEventListener('click', e => { if (e.target === $('veil')) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('veil').classList.contains('open')) closeSheet(); });
+
+$('segFmt').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('segFmt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  fmt = b.dataset.v;
+  drawShare();      // flags already cached — instant redraw
+});
+
+$('native').addEventListener('click', nativeShare);
+$('dl').addEventListener('click', () => { download(); toast('Image saved'); });
+$('copy').addEventListener('click', async () => {
+  try{
+    const blob = await toBlob();
+    await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
+    toast('Copied — paste it into your post');
+  }catch(e){
+    download(); toast('Copy blocked — downloaded instead');
+  }
+});
+$('ig').addEventListener('click', async () => {
+  if (await nativeShare()) return;
+  download(); toast('Saved — open Instagram and post it');
+});
+
+/* ---------- go ---------- */
+render();
+</script>
+</body>
+</html>
